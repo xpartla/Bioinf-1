@@ -5,8 +5,8 @@ import sys
 
 
 def parse_arguments():
-    if len(sys.argv) < 5 or len(sys.argv) > 6:
-        print("Usage: script.py -i <input_file> -s <score_file> (-p {protein} | -d {DNA} )")
+    if len(sys.argv) < 7 or len(sys.argv) > 8:
+        print("Usage: script.py -i1 <input_file_1> -2 <input_file_2> -s <score_file> (-p {protein} | -d {DNA} )")
         sys.exit(1)
 
     args = {}
@@ -14,8 +14,11 @@ def parse_arguments():
 
     i = 1
     while i < len(sys.argv):
-        if sys.argv[i] == '-i':
-            args['input'] = sys.argv[i + 1]
+        if sys.argv[i] == '-i1':
+            args['firstInput'] = sys.argv[i + 1]
+            i += 2
+        elif sys.argv[i] == '-i2':
+            args['secondInput'] = sys.argv[i + 1]
             i += 2
         elif sys.argv[i] == '-s':
             args['score'] = sys.argv[i + 1]
@@ -30,7 +33,7 @@ def parse_arguments():
             print(f"Unknown argument: {sys.argv[i]}")
             sys.exit(1)
 
-    if 'input' not in args or 'score' not in args:
+    if 'firstInput' not in args or 'secondInput' not in args or 'score' not in args:
         print("Error: Missing required arguments -i and -s")
         sys.exit(1)
 
@@ -38,13 +41,19 @@ def parse_arguments():
         print("Error: One of -p or -d must be specified")
         sys.exit(1)
 
-    return args['input'], args['score'], optional_flag
+    return args['firstInput'], args['secondInput'], args['score'], optional_flag
 
 
 def readInput(input):
     with open(input, 'r') as file:
-        sequences = [line.strip() for line in file]
-    return sequences
+        sequence = []
+        firstLine = True
+        for line in file:
+            if firstLine and line.startswith('>'):
+                firstLine = False
+                continue
+            sequence.append(line.strip())
+    return ''.join(sequence)
 
 
 def readMatrix(score):
@@ -74,7 +83,8 @@ def outputScores(seq1, seq2, scores, gap_open=10, gap_extend=0.5):
         for j in range(1, len(seq2) + 1):
             gap_x.iloc[j, i] = max(-gap_open + score_matrix.iloc[j, i - 1], -gap_extend + gap_x.iloc[j, i - 1])
             gap_y.iloc[j, i] = max(-gap_open + score_matrix.iloc[j - 1, i], gap_extend + gap_y.iloc[j - 1, i])
-            score_matrix.iloc[j, i] = max(scores[seq1[i - 1]][seq2[j - 1]] + score_matrix.iloc[j - 1, i - 1], gap_x.iloc[j, i], gap_y.iloc[j, i], 0)
+            score_matrix.iloc[j, i] = max(scores[seq1[i - 1]][seq2[j - 1]] + score_matrix.iloc[j - 1, i - 1],
+                                          gap_x.iloc[j, i], gap_y.iloc[j, i], 0)
 
             if score_matrix.iloc[j, i] == 0:
                 traceback_matrix.iloc[j, i] = STOP
@@ -140,7 +150,6 @@ def outputFile(aligned_seq1, aligned_seq2, match, score_matrix, seq1, seq2):
         f.write('# gapExtend 0.5 \n')
         f.write('#' * 50 + '\n\n')
 
-
         f.write('#=================================================\n')
         f.write('# Alignment Score: ' + str(max(score_matrix.max())) + '\n')
         f.write('# Length: ' + str(len(match) - 2) + '\n')
@@ -149,13 +158,13 @@ def outputFile(aligned_seq1, aligned_seq2, match, score_matrix, seq1, seq2):
         f.write('\n#-------------------------------------------------\n')
         f.write('#-------------------------------------------------\n')
 
-def run(inputFile, scoreFile, mode):
-    if mode != '-p':
+
+def run(firstInput, secondInput, scoreFile, mode):
+    if mode not in ('-p', '-d'):
         return
 
-    sequences = readInput(inputFile)
-    seq1 = sequences[0]
-    seq2 = sequences[1]
+    seq1 = readInput(firstInput)
+    seq2 = readInput(secondInput)
 
     scores = readMatrix(scoreFile)
 
@@ -166,5 +175,5 @@ def run(inputFile, scoreFile, mode):
     outputFile(aligned_seq1, aligned_seq2, match, score_matrix, seq1, seq2)
 
 
-inputFile, scoreFile, mode = parse_arguments()
-run(inputFile, scoreFile, mode)
+firstInput, secondInput, scoreFile, mode = parse_arguments()
+run(firstInput, secondInput, scoreFile, mode)
