@@ -135,15 +135,11 @@ def traceback(score_matrix, traceback_matrix, seq1, seq2, STOP=0, LEFT=1, UP=2, 
 
 def outputFile(aligned_seq1, aligned_seq2, match, score_matrix, seq1, seq2, runTime, recursive=False):
     with open('output.txt', 'w') as f:
-        f.write('#' * 50 + '\n')
-        f.write('Rundate: ' + datetime.now().isoformat(timespec='seconds') + '\n')
-        f.write('Execution time: ' + str(runTime) + '\n')
-        f.write('# seq_1 :' + seq1 + '\n# seq_2: ' + seq2 + '\n')
+        f.write('# Rundate: ' + datetime.now().isoformat(timespec='seconds') + '\n')
+        f.write('# Execution time: ' + str(runTime) + '\n')
         f.write('# gapOpen 10 \n')
         f.write('# gapExtend 0.5 \n')
-        f.write('#' * 50 + '\n\n')
-
-        f.write('#=================================================\n')
+        f.write('# seq_1 :' + seq1 + '\n# seq_2: ' + seq2 + '\n')
         f.write('# Alignment Score: ' + str(np.max(score_matrix)) + '\n')
         f.write('# Length: ' + str(len(match) - 2) + '\n')
         f.write('#=================================================\n\n')
