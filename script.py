@@ -91,6 +91,51 @@ def outputScores(seq1, seq2, scores, gap_open=10, gap_extend=0.5):
     return gap_x, gap_y, score_matrix, traceback_matrix
 
 
+SCORES = {}
+SEQ1 = ""
+SEQ2 = ""
+TRACEBACK = {}
+@lru_cache(None)
+def recursive_alignment_cached(i, j):
+    if i == 0 or j == 0:
+        return 0
+
+    match_score = SCORES[SEQ1[i - 1]][SEQ2[j - 1]]
+
+    scores = [
+        (0, "STOP"),
+        (recursive_alignment_cached(i - 1, j - 1) + match_score, "DIAG"),
+        (recursive_alignment_cached(i - 1, j) - 10, "UP"),
+        (recursive_alignment_cached(i, j - 1) - 10, "LEFT")
+    ]
+
+    best_score, direction = max(scores, key=lambda x: x[0])
+    TRACEBACK[(i, j)] = direction
+    return best_score
+
+def traceback_recursive(i, j):
+    aligned_seq1, aligned_seq2, match = [], [], []
+
+    while (i, j) in TRACEBACK and TRACEBACK[(i, j)] != "STOP":
+        if TRACEBACK[(i, j)] == "DIAG":
+            aligned_seq1.append(SEQ1[i - 1])
+            aligned_seq2.append(SEQ2[j - 1])
+            match.append("|" if SEQ1[i - 1] == SEQ2[j - 1] else ".")
+            i -= 1
+            j -= 1
+        elif TRACEBACK[(i, j)] == "UP":
+            aligned_seq1.append(SEQ1[i - 1])
+            aligned_seq2.append('-')
+            match.append(" ")
+            i -= 1
+        elif TRACEBACK[(i, j)] == "LEFT":
+            aligned_seq1.append('-')
+            aligned_seq2.append(SEQ2[j - 1])
+            match.append(" ")
+            j -= 1
+
+    return "".join(reversed(aligned_seq1)), "".join(reversed(match)), "".join(reversed(aligned_seq2))
+
 def traceback(score_matrix, traceback_matrix, seq1, seq2, STOP=0, LEFT=1, UP=2, DIAGONAL=3):
     aligned_seq1, aligned_seq2, match = [], [], []
 
@@ -151,17 +196,35 @@ def outputFile(aligned_seq1, aligned_seq2, match, score_matrix, seq1, seq2, runT
 
 
 def run(firstInput, secondInput, scoreFile, recursive):
-    seq1 = readInput(firstInput)
-    seq2 = readInput(secondInput)
+    global SCORES, SEQ1, SEQ2, TRACEBACK
+    SEQ1 = readInput(firstInput)
+    SEQ2 = readInput(secondInput)
+    SCORES = readMatrix(scoreFile)
+    TRACEBACK = {}
 
-    scores = readMatrix(scoreFile)
     startTime = datetime.now()
-    gap_x, gap_y, score_matrix, traceback_matrix = outputScores(seq1, seq2, scores)
 
-    aligned_seq1, aligned_seq2, match = traceback(score_matrix, traceback_matrix, seq1, seq2)
+    if recursive:
+        max_score = 0
+        max_i, max_j = 0, 0
+
+        for i in range(len(SEQ1) + 1):
+            for j in range(len(SEQ2) + 1):
+                score = recursive_alignment_cached(i, j)
+                if score > max_score:
+                    max_score = score
+                    max_i, max_j = i, j
+
+        aligned_seq1, match, aligned_seq2 = traceback_recursive(max_i, max_j)
+        score_matrix = np.zeros((len(SEQ2) + 1, len(SEQ1) + 1))
+    else:
+        gap_x, gap_y, score_matrix, traceback_matrix = outputScores(SEQ1, SEQ2, SCORES)
+        aligned_seq1, aligned_seq2, match = traceback(score_matrix, traceback_matrix, SEQ1, SEQ2)
+
     endTime = datetime.now()
     runTime = endTime - startTime
-    outputFile(aligned_seq1, aligned_seq2, match, score_matrix, seq1, seq2, runTime, recursive)
+
+    outputFile(aligned_seq1, aligned_seq2, match, score_matrix, SEQ1, SEQ2, runTime, recursive)
 
 firstInput, secondInput, scoreFile, recursive = parse_arguments()
 run(firstInput, secondInput, scoreFile, recursive)
