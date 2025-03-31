@@ -1,7 +1,9 @@
+import os
 from datetime import datetime
 import numpy as np
 import argparse
 from functools import lru_cache
+import psutil
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description="Better emboss water :) ")
@@ -178,10 +180,11 @@ def traceback(score_matrix, traceback_matrix, seq1, seq2, STOP=0, LEFT=1, UP=2, 
 
     return aligned_seq1, aligned_seq2, match
 
-def outputFile(aligned_seq1, aligned_seq2, match, score_matrix, seq1, seq2, runTime, recursive=False):
+def outputFile(aligned_seq1, aligned_seq2, match, score_matrix, seq1, seq2, runTime, memoryUsage, recursive=False):
     with open('output.txt', 'w') as f:
         f.write('# Rundate: ' + datetime.now().isoformat(timespec='seconds') + '\n')
         f.write('# Execution time: ' + str(runTime) + '\n')
+        f.write('# Memory used: ' + str(memoryUsage) + ' MB' + '\n')
         f.write('# gapOpen 10 \n')
         f.write('# gapExtend 0.5 \n')
         f.write('# seq_1 :' + seq1 + '\n# seq_2: ' + seq2 + '\n')
@@ -195,6 +198,11 @@ def outputFile(aligned_seq1, aligned_seq2, match, score_matrix, seq1, seq2, runT
             f.write('recursion not yet implemented')
 
 
+def measureMemory():
+    process = psutil.Process(os.getpid())
+    return process.memory_info().rss / (1024*1024
+                                        )
+
 def run(firstInput, secondInput, scoreFile, recursive):
     global SCORES, SEQ1, SEQ2, TRACEBACK
     SEQ1 = readInput(firstInput)
@@ -203,6 +211,7 @@ def run(firstInput, secondInput, scoreFile, recursive):
     TRACEBACK = {}
 
     startTime = datetime.now()
+    startMem = measureMemory()
 
     if recursive:
         max_score = 0
@@ -222,9 +231,11 @@ def run(firstInput, secondInput, scoreFile, recursive):
         aligned_seq1, aligned_seq2, match = traceback(score_matrix, traceback_matrix, SEQ1, SEQ2)
 
     endTime = datetime.now()
+    endMem = measureMemory()
     runTime = endTime - startTime
+    memoryUsage = endMem - startMem
 
-    outputFile(aligned_seq1, aligned_seq2, match, score_matrix, SEQ1, SEQ2, runTime, recursive)
+    outputFile(aligned_seq1, aligned_seq2, match, score_matrix, SEQ1, SEQ2, runTime, memoryUsage, recursive)
 
 firstInput, secondInput, scoreFile, recursive = parse_arguments()
 run(firstInput, secondInput, scoreFile, recursive)
