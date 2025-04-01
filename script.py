@@ -38,6 +38,7 @@ def parseArguments():
 
 
 def readInput(input):
+    sequenceName = ''
     with open(input, 'r') as file:
         sequence = []
         firstLine = True
@@ -47,6 +48,8 @@ def readInput(input):
                 sequenceName = line[1:]
                 continue
             sequence.append(line.strip())
+    if len(sequenceName) == 0:
+        sequenceName = 'unknown sequence\n'
     return ''.join(sequence), sequenceName
 
 def readMatrix(score):
@@ -191,7 +194,7 @@ def outputFile(alignedSeq1, alignedSeq2, match, bestScore, seq1, seq2, name1, na
         f.write('# seq_1 : \n - ' + name1 + ' - ' + seq1 + '\n\n# seq_2: \n - ' + name2 + ' - ' + seq2 + '\n\n')
         f.write('# Alignment Score: ' + bestScore + '\n')
         f.write('# Length: ' + str(len(match) - 2) + '\n\n')
-        f.write(alignedSeq1 + '\n' + match + '\n' + alignedSeq2 + '\n')
+        f.write('seq_1: ' + alignedSeq1 + '\n' + '       ' + match + '\n' + 'seq_2: ' + alignedSeq2 + '\n')
         f.write('\n#-------------------------------------------------\n')
         f.write('#-------------------------------------------------\n')
         if recursive:
